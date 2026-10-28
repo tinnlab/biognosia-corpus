@@ -1,0 +1,149 @@
+name: biognosia-corpus
+
+services:
+  milvus-etcd:
+    image: quay.io/coreos/etcd:v3.5.23
+    restart: always
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=periodic
+      - ETCD_AUTO_COMPACTION_RETENTION=5m
+      - ETCD_QUOTA_BACKEND_BYTES=8589934592
+      - ETCD_SNAPSHOT_COUNT=100000
+      - ETCD_HEARTBEAT_INTERVAL=1000
+      - ETCD_ELECTION_TIMEOUT=10000
+      - ETCD_MAX_REQUEST_BYTES=16777216
+    volumes:
+      - ${DATABASE_DIR:-./database}/milvus/etcd:/etcd
+    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  milvus-minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    restart: always
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:?set MINIO_ACCESS_KEY in .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?set MINIO_SECRET_KEY in .env}
+    volumes:
+      - ${DATABASE_DIR:-./database}/milvus/minio:/minio_data
+    command: minio server /minio_data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  milvus-standalone:
+    image: milvusdb/milvus:v2.6.2
+    command: ["milvus", "run", "standalone"]
+    restart: always
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      ETCD_ENDPOINTS: milvus-etcd:2379
+      MINIO_ADDRESS: milvus-minio:9000
+      MINIO_ACCESS_KEY_ID: ${MINIO_ACCESS_KEY:?set MINIO_ACCESS_KEY in .env}
+      MINIO_SECRET_ACCESS_KEY: ${MINIO_SECRET_KEY:?set MINIO_SECRET_KEY in .env}
+      COMMON_SESSION_TTL: "120"
+      COMMON_SESSION_RETRYTIMES: "60"
+      GRPC_SERVER_MAX_RECV_MSG_SIZE: "1073741824"
+      GRPC_SERVER_MAX_SEND_MSG_SIZE: "1073741824"
+      GOGC: "200"
+      DATANODE_DATANODE_MEMORY_FORCESYNCENABLED: "true"
+      DATANODE_DATANODE_MEMORY_FORCESYNCWATERMARK: "0.7"
+      DATANODE_DATANODE_INDEXJOBQUEUE_SIZE: "256"
+      DATANODE_DATANODE_INDEXJOBPARALLELISM: "4"
+      ETCD_REQUEST_TIMEOUT: "20000"
+      ETCD_KEEPALIVE_TIME: "10000"
+      ETCD_KEEPALIVE_TIMEOUT: "30000"
+      QUERYNODE_QUERYNODE_MAXCONCURRENTLOADINGTASK: "8"
+      QUERYNODE_QUERYNODE_SEGMENTLOADCONCURRENCY: "4"
+      DATACOORD_COMPACTION_ENABLEAUTOCOMPACTION: "true"
+      DATACOORD_COMPACTION_INDEXBASEDONSIZE: "true"
+      DATACOORD_COMPACTION_MININTERVAL: "300"
+    volumes:
+      - ${DATABASE_DIR:-./database}/milvus/milvus:/var/lib/milvus
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      start_period: 90s
+      timeout: 20s
+      retries: 3
+    ports:
+      - "127.0.0.1:${MILVUS_PORT:-19530}:19530"
+    depends_on:
+      - milvus-etcd
+      - milvus-minio
+
+  neo4j:
+    image: neo4j:2025.09.0-community
+    restart: always
+    ports:
+      - "127.0.0.1:7474:7474"
+      - "127.0.0.1:7687:7687"
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:?set NEO4J_PASSWORD in .env}
+      NEO4J_dbms_memory_heap_max__size: ${NEO4J_HEAP_SIZE:-8G}
+      NEO4J_dbms_memory_pagecache_size: ${NEO4J_PAGECACHE_SIZE:-8G}
+    volumes:
+      - ${DATABASE_DIR:-./database}/neo4j/data:/data
+      - ${DATABASE_DIR:-./database}/neo4j/logs:/logs
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p \"$${NEO4J_AUTH#neo4j/}\" 'RETURN 1'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis:
+    image: redis:8.2-alpine
+    restart: always
+    ports:
+      - "127.0.0.1:6379:6379"
+    command: redis-server --maxmemory ${REDIS_MAXMEMORY:-16gb} --maxmemory-policy allkeys-lru --save 60 1000 --appendonly yes --appendfsync everysec
+    volumes:
+      - ${DATABASE_DIR:-./database}/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis-cache:
+    image: redis:8.2-alpine
+    restart: always
+    ports:
+      - "127.0.0.1:6380:6379"
+    command: redis-server --maxmemory ${REDIS_CACHE_MAXMEMORY:-16gb} --maxmemory-policy allkeys-lru --save 60 1000 --appendonly yes --appendfsync everysec
+    volumes:
+      - ${DATABASE_DIR:-./database}/redis-cache:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    restart: always
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.ml.enabled=false
+      - action.auto_create_index=true
+      - ES_JAVA_OPTS=-Xms${ES_HEAP_SIZE:-8g} -Xmx${ES_HEAP_SIZE:-8g}
+    ports:
+      - "127.0.0.1:9200:9200"
+    volumes:
+      - ${DATABASE_DIR:-./database}/elasticsearch:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+networks:
+  default:
+    name: biognosia-corpus

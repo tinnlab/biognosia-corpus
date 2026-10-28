@@ -1,0 +1,24 @@
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.ruff_cache/
+.pytest_cache/
+
+# Pipeline data and database volumes
+/database/
+/data/*
+!/data/papers.tsv
+*.log
+
+# Editor
+.idea/
+.vscode/
+.claude/

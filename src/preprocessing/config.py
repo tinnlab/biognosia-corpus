@@ -1,0 +1,71 @@
+"""Configuration for preprocessing pipeline."""
+
+PREPROCESSING_CONFIG = {
+    "fix_encoding": True,
+    "clean_latex": True,
+    "unicode_to_ascii": True,
+    "normalize_whitespace": True,
+    "fix_sentences": True,
+    "fix_hyphenation": True,
+    "remove_duplicates": True,
+    "check_language": True,
+    "min_length": 100,
+    "max_length": 1_000_000,
+    "quality_threshold": 0.7,
+}
+
+GREEK_PATTERNS = {
+    r"\ba\b(?=-\w+)": "alpha",
+    r"\bb\b(?=-\w+)": "beta",
+    r"\bg\b(?=-\w+)": "gamma",
+    r"\bd\b(?=-\w+)": "delta",
+    r"\be\b(?=-\w+)": "epsilon",
+    r"\ba\b(?=\s+subunit)": "alpha",
+    r"\bb\b(?=\s+subunit)": "beta",
+    r"\bg\b(?=\s+subunit)": "gamma",
+    r"\ba\b(?=\s*[-\s]*oxid)": "alpha",
+    r"\bb\b(?=\s*[-\s]*oxid)": "beta",
+}
+
+GREEK_FULL_NAMES = {
+    "α": "alpha",
+    "β": "beta",
+    "γ": "gamma",
+    "δ": "delta",
+    "ε": "epsilon",
+    "ζ": "zeta",
+    "η": "eta",
+    "θ": "theta",
+    "ι": "iota",
+    "κ": "kappa",
+    "λ": "lambda",
+    "μ": "mu",
+    "ν": "nu",
+    "ξ": "xi",
+    "ο": "omicron",
+    "π": "pi",
+    "ρ": "rho",
+    "σ": "sigma",
+    "ς": "sigma",
+    "τ": "tau",
+    "υ": "upsilon",
+    "φ": "phi",
+    "χ": "chi",
+    "ψ": "psi",
+    "ω": "omega",
+}
+
+STATS_CSV_HEADER = [
+    "id",
+    "original_chars",
+    "preprocessed_chars",
+    "chars_removed",
+    "encoding_fixed",
+    "latex_patterns_found",
+    "language_detected",
+    "quality_score",
+    "started_time",
+    "finished_time",
+    "status",
+    "error",
+]

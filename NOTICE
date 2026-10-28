@@ -1,0 +1,40 @@
+BioGnosia corpus
+Copyright (c) 2025 Tin Nguyen Lab
+
+This product is licensed under the MIT License; see LICENSE.
+
+--------------------------------------------------------------------------------
+Third-party models
+--------------------------------------------------------------------------------
+
+This software downloads and runs the following pre-trained models. They are NOT
+distributed as part of this repository. Each is fetched from the Hugging Face Hub
+by scripts/00_download_resources.sh or at first use, and each remains subject to
+its own license. Consult the model pages for the authoritative and current terms.
+
+  BAAI/bge-m3
+      Role:    chunk and entity content embeddings (1024-dim)
+      License: MIT
+      https://huggingface.co/BAAI/bge-m3
+
+  ncbi/MedCPT-Query-Encoder
+      Role:    entity label and n-gram embeddings (768-dim)
+      License: public domain (U.S. National Library of Medicine / NCBI)
+      https://huggingface.co/ncbi/MedCPT-Query-Encoder
+
+  minishlab/potion-base-32M
+      Role:    sentence embeddings for semantic chunking
+      License: MIT
+      https://huggingface.co/minishlab/potion-base-32M
+
+--------------------------------------------------------------------------------
+Data
+--------------------------------------------------------------------------------
+
+The databases, papers and curated resources that this software downloads and
+processes are not part of this repository and are not covered by the license
+above. Each resource (NCBI Gene, CTD, KEGG, Reactome, MSigDB, Gene Ontology,
+Cell Ontology, Uberon, NCBI Taxonomy, Semantic Scholar, Europe PMC) is subject
+to the license and terms of use of its provider. data/papers.tsv lists
+identifiers and bibliographic metadata of papers. The full texts of the papers
+remain subject to their publishers' terms.
